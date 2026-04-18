@@ -1,44 +1,48 @@
-OBJECTS=unixds.o inetds.o soapds.o proto.o
+CC=gcc
+CFLAGS=-Wall -Wextra -g
+LIBS=-lpthread -lconfig
+
+SERVER_OBJS=threeds.o unixds.o proto.o worker.o
+ADMIN_OBJS=client_admin.o proto.o
+USER_OBJS=client_user.o proto.o
 
 help:
-	@echo "Use one of these"
-	@echo "	make serverds -- to build the server"
-	@echo "	make inetclient -- to build the inet test client"
-	@echo "	make clean -- to remove unwanted files"
-	@echo ""
-	@echo "Notice that you need some libraries to compile:"
-	@echo "	sudo apt install gsoap libgsoap-dev"
-	@echo "	sudo apt install libncurses-dev libncursesw-dev"
-	@echo "	-- NCurses support was removed, however"
-	@echo ""
-	@echo "If something went wrong, you can try..."
-	@echo "	sudo apt update"
-	@echo "	sudo apt upgrade"
-	
-serverds: threeds.c ${OBJECTS} SampleServices.nsmap
-	gcc -g threeds.c soapC.c soapServer.c ${OBJECTS} -l pthread -l gsoap -Wall -o serverds
+	@echo "make serverds      - build UNIX server"
+	@echo "make client_admin  - build admin client"
+	@echo "make client_user   - build ordinary client"
+	@echo "make clean         - remove binaries and generated media"
 
-unixds.o: unixds.c 
-	gcc -g unixds.c -c -o unixds.o -Wall -l pthread
+all: serverds client_admin client_user
 
-inetds.o: inetds2.c proto.o
-	gcc -g inetds2.c -c -o inetds.o -Wall  -l pthread
+serverds: $(SERVER_OBJS)
+	$(CC) $(CFLAGS) -o serverds $(SERVER_OBJS) $(LIBS)
+
+client_admin: $(ADMIN_OBJS)
+	$(CC) $(CFLAGS) -o client_admin $(ADMIN_OBJS) $(LIBS)
+
+client_user: $(USER_OBJS)
+	$(CC) $(CFLAGS) -o client_user $(USER_OBJS) $(LIBS)
+
+threeds.o: threeds.c
+	$(CC) $(CFLAGS) -c threeds.c -o threeds.o
+
+unixds.o: unixds.c proto.h
+	$(CC) $(CFLAGS) -c unixds.c -o unixds.o
 
 proto.o: proto.c proto.h
-	gcc -g proto.c -c -o proto.o -Wall  -l pthread
+	$(CC) $(CFLAGS) -c proto.c -o proto.o
 
-soapds.o: soapds.c SampleServices.nsmap
-	gcc -g soapds.c -c -o soapds.o -Wall  -l pthread -l gsoap
+worker.o: worker.c
+	$(CC) $(CFLAGS) -c worker.c -o worker.o
 
-SampleServices.nsmap: sclient.h
-	soapcpp2 -S -c -x sclient.h
+client_admin.o: client_admin.c proto.h
+	$(CC) $(CFLAGS) -c client_admin.c -o client_admin.o
 
-inetclient: inetsample2.c proto.o
-	gcc -g inetsample2.c proto.o -Wall -o inetclient
+client_user.o: client_user.c proto.h
+	$(CC) $(CFLAGS) -c client_user.c -o client_user.o
 
 clean:
-	rm -f ${OBJECTS} *.nsmap soapC.c soapH.h soapServer.c soapServerLib.c soapStub.h *.xsd *.wsdl
-
-# NOTICE: use sudo apt-get install gsoap libgsoap-dev
-# NOTICE: use sudo apt-get install libncurses5-dev libncursesw5-dev
-# NOTICE: use the sample INET client (gcc inetsample.c -o inets; ./inets)
+	rm -f *.o serverds client_admin client_user
+	rm -f /tmp/video.sock
+	rm -f out_720p.mp4 out_480p.mp4 out_res1.mp4 out_res2.mp4
+	rm -f thumb_*.jpg
